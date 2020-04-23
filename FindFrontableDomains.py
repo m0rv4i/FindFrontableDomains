@@ -6,6 +6,7 @@ import threading
 import queue
 import argparse
 import sys
+import subprocess
 from Sublist3r import sublist3r
 
 class ThreadLookup(threading.Thread):
@@ -34,9 +35,15 @@ class ThreadLookup(threading.Thread):
                             print("Google Frontable domain found: " + str(hostname) + " " + str(target))
                         elif 'msecnd.net' in target:
                             print("Azure Frontable domain found: " + str(hostname) + " " + str(target))
-                        elif 'aspnetcdn.com' in target:
-                            print("Azure Frontable domain found: " + str(hostname) + " " + str(target))
-                        elif 'azureedge.net' in target:
+                        elif 'aspnetcdn.com' in target or 'azureedge.net' in target :
+                            try:
+                                response=subprocess.getoutput(f'pysslscan scan --scan=protocol.http --scan=server.ciphers --tls10 {str(hostname)} | grep Accepted | wc -l')
+                                if int(response) > 0:
+                                    print("\033[92mAzure Frontable domain found: " + str(hostname) + " " + str(target) + '\033[0m')
+                                    continue
+                            except Exception as e:
+                                print(e)
+                                pass
                             print("Azure Frontable domain found: " + str(hostname) + " " + str(target))
                         elif 'a248.e.akamai.net' in target:
                             print("Akamai frontable domain found: " + str(hostname) + " " + str(target))
@@ -68,7 +75,7 @@ def main():
 
     from colorama import init
     init(strip=not sys.stdout.isatty()) # strip colors if stdout is redirected
-    from termcolor import cprint 
+    from termcolor import cprint
     from pyfiglet import figlet_format
 
     cprint(figlet_format('Find'))
@@ -82,9 +89,9 @@ def main():
             for d in f:
                 d = d.rstrip()
                 if d:
-                    q.put(d)   
+                    q.put(d)
     elif check:
-        q.put(check)       
+        q.put(check)
     elif domain:
         subdomains = []
         subdomains = sublist3r.main(domain, threads, savefile=None, ports=None, silent=False, verbose=False, enable_bruteforce=False, engines=None)
@@ -101,7 +108,7 @@ def main():
         t = ThreadLookup(q)
         t.setDaemon(True)
         t.start()
-    
+
     q.join()
     print("")
     print("Search complete!")
